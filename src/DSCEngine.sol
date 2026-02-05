@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
 pragma solidity ^0.8.18;
 
+import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
+import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
 /**
  * @title DSCEngine
  * @author Zer4ch
@@ -15,35 +19,71 @@ pragma solidity ^0.8.18;
  * @notice This contract is incomplete and serves as a placeholder for the DSCEngine logic.
  */
 
-contract DSCEngine {
+contract DSCEngine is ReentrancyGuard {
     ////////// ERRORS //////////
     error DSCEngine__NeedsMoreThanZero();
+    error DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
+    error DSCEngine__TokenNotAllowed();
+    error DSCEngine__TransferFailed();
 
-    mapping(address => bool ) private s_priceFeeds;
+    mapping(address token => address priceFeed) private s_priceFeeds;
+    mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited;
 
+    DecentralizedStableCoin private immutable i_dsc;
+
+    /////////// EVENT //////////
+
+    event collateralDeposited(address indexed user, address indexed token, uint256 amount);
 
     ////////// MODIFIERS //////////
-    modifier moreThanZero (uint256 amount){
-        if(amount == 0){
+    modifier moreThanZero(uint256 amount) {
+        if (amount == 0) {
             revert DSCEngine__NeedsMoreThanZero();
         }
         _;
     }
 
-    modifier isAllowedToken(address token){
+    modifier isAllowedToken(address token) {
+        if (s_priceFeeds[token] == address(0)) {
+            revert DSCEngine__TokenNotAllowed();
+        }
+        _;
+    }
 
+    constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress) {
+        if (tokenAddresses.length != priceFeedAddresses.length) {
+            revert DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
+        }
+
+        for (uint256 i = 0; i < tokenAddresses.length; i++) {
+            s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
+        }
+        i_dsc = DecentralizedStableCoin(dscAddress);
     }
 
     ////////// FUNCTIONS //////////
-    }
+
     function depositCollateralAndMintDsc() external {}
 
     /**
-     * 
+     * @notice follows Check Effects-Interactions pattern and uses reentrancy guard to prevent reentrancy attack.
      * @param tokenCollateraladdress the address of the token to deposit as collateral
-     * @param amountCollateral the amount of collateral to deposit 
+     * @param amountCollateral the amount of collateral to deposit
      */
-    function depositCollateral(address tokenCollateraladdress, uint256 amountCollateral) external {}
+
+    function depositCollateral(address tokenCollateraladdress, uint256 amountCollateral)
+        external
+        moreThanZero(amountCollateral)
+        isAllowedToken(tokenCollateraladdress)
+        nonReentrant
+    {
+        s_collateralDeposited[msg.sender][tokenCollateraladdress] += amountCollateral;
+        emit collateralDeposited(msg.sender, tokenCollateraladdress, amountCollateral);
+        bool success = IERC20(tokenCollateraladdress).transferFrom(msg.sender, address(this), amountCollateral);
+        if (!success) {
+            revert DSCEngine__TransferFailed();
+        }
+    }
 
     function redeemCollateralForDsc() external {}
 
