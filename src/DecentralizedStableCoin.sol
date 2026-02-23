@@ -15,6 +15,10 @@ contract DecentralizedStableCoin is ERC20Burnable, Ownable {
     error DecentralizedStableCoin_BurnAmountExceedsBalance();
     error DecentralizedStableCoin_NotZeroAddress();
 
+    address user;
+    uint256 serial;
+    string public user;
+
     constructor() ERC20("DecentralizedStableCoin", "DSC") Ownable(msg.sender) {}
 
     function burn(uint256 _amount) public override onlyOwner {
@@ -40,6 +44,9 @@ contract DecentralizedStableCoin is ERC20Burnable, Ownable {
         return true;
     }
 
-    function NotDummy(address _user, uint256 _serial, string memeory _name) public view returns (uint256 _status){
+    function NotDummy(address _user, uint256 _serial, string memory _name) public view returns (bool ){
+        name = _name;
+        user = _user;
+        return true;
         }
     }
