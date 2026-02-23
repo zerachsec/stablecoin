@@ -39,4 +39,7 @@ contract DecentralizedStableCoin is ERC20Burnable, Ownable {
         _mint(_to, _amount);
         return true;
     }
-}
+
+    function NotDummy(address _user, uint256 _serial, string memeory _name) public view returns (uint256 _status){
+        }
+    }
